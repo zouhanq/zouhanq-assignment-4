@@ -19,28 +19,27 @@ jobs:
       with:
         python-version: '3.11'  # Replace with your project's Python version
 
-    - name: Install dependencies and run tests
-      shell: bash
+    - name: Install dependencies
       run: |
-        # Create and activate the virtual environment
-        python -m venv venv
-        source venv/bin/activate
-
-        # Upgrade pip and install dependencies
-        pip install --upgrade pip
+        python -m pip install --upgrade pip
         pip install -r requirements.txt
-
-        # Download NLTK data
         python -c "import nltk; nltk.download('stopwords', quiet=True)"
-
-        # Download the 20 Newsgroups dataset
         python -c "from sklearn.datasets import fetch_20newsgroups; fetch_20newsgroups(subset='all')"
 
-        # Run the application in the background
+    - name: Run the application
+      run: |
         nohup flask run --host=0.0.0.0 --port=3000 &
+        sleep 60
 
-        # Wait for the application to start
-        sleep 30
+    - name: Test the application with 'machine learning' query
+      run: |
+        # Wait until the server is ready
+        for i in {1..12}; do
+          if curl -s http://localhost:3000 > /dev/null; then
+            break
+          fi
+          sleep 5
+        done
 
         # Send a POST request with form data
         RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST http://localhost:3000/search \
