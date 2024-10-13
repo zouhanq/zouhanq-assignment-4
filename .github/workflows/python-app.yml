@@ -1,0 +1,62 @@
+name: Python Application CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'  # Replace with your project's Python version
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        make install
+        python -c "import nltk; nltk.download('stopwords', quiet=True)"
+
+    - name: Run the application
+      run: |
+        nohup make run &
+        sleep 30
+
+    - name: Test the application with 'machine learning' query
+      run: |
+        # Wait until the server is ready
+        for i in {1..10}; do
+          if curl -s http://localhost:3000 > /dev/null; then
+            break
+          fi
+          sleep 5
+        done
+
+        # Send a POST request with the query "machine learning"
+        RESPONSE=$(curl -s -X POST http://localhost:3000/search \
+          -H "Content-Type: application/json" \
+          -d '{"query": "machine learning"}')
+
+        echo "Response: $RESPONSE"
+
+        # Check if the response contains the expected keys
+        echo "$RESPONSE" | grep '"documents"' > /dev/null
+        echo "$RESPONSE" | grep '"similarities"' > /dev/null
+        echo "$RESPONSE" | grep '"indices"' > /dev/null
+
+        # Check if the number of returned documents is 5
+        NUM_DOCS=$(echo "$RESPONSE" | python -c "import sys, json; print(len(json.load(sys.stdin)['documents']))")
+        if [ "$NUM_DOCS" -ne 5 ]; then
+          echo "Expected 5 documents, got $NUM_DOCS"
+          exit 1
+        fi
+
+        echo "Test passed: Received 5 documents with expected keys."
