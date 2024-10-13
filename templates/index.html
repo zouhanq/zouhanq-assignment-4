@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>LSA Search Engine</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <!-- Include Plotly.js CDN -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+    <h1>Latent Semantic Analysis (LSA) Search Engine</h1>
+    <form id="search-form">
+        <input type="text" id="query" placeholder="Enter search query" required>
+        <button type="submit">Search</button>
+    </form>
+
+    <div id="results"></div>
+    <div id="similarity-chart"></div>
+
+    <!-- Scripts -->
+    <script src="/static/main.js"></script>
+</body>
+</html>
