@@ -43,7 +43,7 @@ jobs:
         # Send a POST request with the query "machine learning"
         RESPONSE=$(curl -s -X POST http://localhost:3000/search \
           -H "Content-Type: application/json" \
-          -d '{"query": "machine learning"}')
+          -d "{\"query\": \"machine learning\"}")
 
         echo "Response: $RESPONSE"
 
