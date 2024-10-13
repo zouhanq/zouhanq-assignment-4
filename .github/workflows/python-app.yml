@@ -17,7 +17,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.11'
+        python-version: '3.11'  # Replace with your Python version
 
     - name: Install dependencies
       run: |
@@ -25,15 +25,23 @@ jobs:
         pip install -r requirements.txt
         python -c "import nltk; nltk.download('stopwords', quiet=True)"
 
+    - name: Download 20 Newsgroups Dataset
+      run: |
+        python -c "from sklearn.datasets import fetch_20newsgroups; fetch_20newsgroups(subset='all')"
+
     - name: Run the application
       run: |
-        nohup python app.py &
-        sleep 30
+        nohup python app.py > app.log 2>&1 &
+        sleep 60
+
+    - name: Display application logs
+      run: |
+        cat app.log
 
     - name: Test the application with 'machine learning' query
       run: |
         # Wait until the server is ready
-        for i in {1..10}; do
+        for i in {1..12}; do
           if curl -s http://localhost:3000 > /dev/null; then
             break
           fi
@@ -41,19 +49,29 @@ jobs:
         done
 
         # Send a POST request with the query "machine learning"
-        RESPONSE=$(curl -s -X POST http://localhost:3000/search \
+        RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST http://localhost:3000/search \
           -H "Content-Type: application/json" \
           -d "{\"query\": \"machine learning\"}")
 
-        echo "Response: $RESPONSE"
+        # Separate the body and the status code
+        HTTP_BODY=$(echo "$RESPONSE" | sed '$d')
+        HTTP_STATUS=$(echo "$RESPONSE" | tail -n1 | cut -d':' -f2)
 
-        # Check if the response contains the expected keys
-        echo "$RESPONSE" | grep '"documents"' > /dev/null
-        echo "$RESPONSE" | grep '"similarities"' > /dev/null
-        echo "$RESPONSE" | grep '"indices"' > /dev/null
+        echo "HTTP Status: $HTTP_STATUS"
+        echo "Response Body: $HTTP_BODY"
+
+        if [ "$HTTP_STATUS" -ne 200 ]; then
+          echo "Request failed with status $HTTP_STATUS"
+          exit 1
+        fi
+
+        # Proceed with parsing the response
+        echo "$HTTP_BODY" | grep '"documents"' > /dev/null
+        echo "$HTTP_BODY" | grep '"similarities"' > /dev/null
+        echo "$HTTP_BODY" | grep '"indices"' > /dev/null
 
         # Check if the number of returned documents is 5
-        NUM_DOCS=$(echo "$RESPONSE" | python -c "import sys, json; print(len(json.load(sys.stdin)['documents']))")
+        NUM_DOCS=$(echo "$HTTP_BODY" | python -c "import sys, json; print(len(json.load(sys.stdin)['documents']))")
         if [ "$NUM_DOCS" -ne 5 ]; then
           echo "Expected 5 documents, got $NUM_DOCS"
           exit 1
